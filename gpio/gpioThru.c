@@ -134,10 +134,10 @@ void mat_print(){
 		for (y = -1; y <= ROWS; y++){
 			if (x < 0 || x == COLS)
 				printf("a");
-			else if(y < 0; || y == ROWS)
+			else if(y < 0 || y == ROWS)
 				printf("b");
 			else
-				printf(matrix[x+y*COLS] == 1? "1" : "0");
+				printf((matrix[x+y*COLS] == 1 ? "1" : "0"));
 		}
 		printf("\n");
 	}
