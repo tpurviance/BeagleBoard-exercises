@@ -91,12 +91,14 @@ void mat_free(){
 }
 
 void mat_do_move(int newx, int newy) {
+	printf("moving to %i, %i\n",newx,newy);
 	matrix[newx + newy * COLS] = 1;
 	pos_x = newx;
 	pos_y = newy;	
 }
 
 void mat_try_move(Direction dir){
+	printf("trying to move\n");
 	int dx = 0;
 	int dy = 0;
 	switch(dir){
