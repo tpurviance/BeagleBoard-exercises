@@ -191,7 +191,7 @@ int main(int argc, char **argv, char **envp)
 		fdset[1].events = POLLPRI;
 
 
-		fdset[1].fd = gpios[cur_gpio];
+		fdset[1].fd = gpiofds[cur_gpio];
 		rc = poll(fdset, nfds, timeout);      
 
 		if (rc < 0) {
@@ -203,7 +203,7 @@ int main(int argc, char **argv, char **envp)
 			lseek(fdset[1].fd, 0, SEEK_SET);  // Read from the start of the file
 			len = read(fdset[1].fd, buf, MAX_BUF);
 			printf("\npoll() GPIO %d interrupt occurred, value=%c, len=%d\n",
-				 gpios[cur_gpio], buf[0], len);
+				 gpiofds[cur_gpio], buf[0], len);
 		}
 
 		if (fdset[0].revents & POLLIN) {
