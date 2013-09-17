@@ -198,6 +198,8 @@ int main(int argc, char **argv, char **envp)
 	timeout = POLL_TIMEOUT;
 	
 	unsigned int gpios[] = {GPIO_UP,GPIO_DOWN,GPIO_LEFT,GPIO_RIGHT};
+	unsigned int gpiofds[] = {gpio_fd_up, gpio_fd_down, gpio_fd_left, gpio_fd_right};
+
 	int cur_gpio = 0;
  
 	while (keepgoing) {
@@ -208,7 +210,7 @@ int main(int argc, char **argv, char **envp)
 		fdset[1].events = POLLPRI;
 
 
-		fdset[1].fd = gpios[cur_gpio];
+		fdset[1].fd = gpiofds[cur_gpio];
 		rc = poll(fdset, nfds, timeout);      
 
 		if (rc < 0) {
