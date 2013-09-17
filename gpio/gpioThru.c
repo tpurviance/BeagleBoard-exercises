@@ -133,13 +133,13 @@ void mat_print(){
 	for (x = -1; x <= COLS; x++){
 		for (y = -1; y <= ROWS; y++){
 			if (x < 0 || x == COLS)
-				printf("_");
+				printf("-");
 			else if(y < 0 || y == ROWS)
 				printf("|");
 			else
 				printf((matrix[x+y*COLS] == 1 ? "*" : " "));
 		}
-		printf("\n");
+		printf((y == ROWS ? "" : "\n"));
 	}
 }
 
