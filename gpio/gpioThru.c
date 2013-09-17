@@ -83,7 +83,7 @@ int pos_y = 0;
 typedef enum {UP, DOWN, LEFT, RIGHT} Direction;
 
 void mat_alloc(){
-	matrix = (int*) calloc(ROWS*HEIGHT, sizeof(int));
+	matrix = (int*) calloc(ROWS*COLS, sizeof(int));
 }
 
 void mat_free(){
