@@ -128,6 +128,21 @@ void mat_reset() {
 			matrix[x + y * COLS] = 0;
 }
 
+void mat_print(){
+	int i,x,y;
+	for (x = -1; x <= COLS; x++){
+		for (y = -1; y <= ROWS; y++){
+			if (x < 0 || x == COLS)
+				printf("a");
+			else if(y < 0; || y == ROWS)
+				printf("b");
+			else
+				printf(matrix[x+y*COLS] == 1? "1" : "0");
+		}
+		printf("\n");
+	}
+}
+
 /****************************************************************
  * Main
  ****************************************************************/
@@ -180,7 +195,7 @@ int main(int argc, char **argv, char **envp)
 
 	timeout = POLL_TIMEOUT;
 	
-	unsigned int gpiofds[] = {gpio_fd_up, gpio_fd_down, gpio_fd_left, gpio_fd_right};
+	unsigned int gpios[] = {GPIO_UP,GPIO_DOWN,GPIO_LEFT,GPIO_RIGHT};
 	int cur_gpio = 0;
  
 	while (keepgoing) {
@@ -191,7 +206,7 @@ int main(int argc, char **argv, char **envp)
 		fdset[1].events = POLLPRI;
 
 
-		fdset[1].fd = gpiofds[cur_gpio];
+		fdset[1].fd = gpios[cur_gpio];
 		rc = poll(fdset, nfds, timeout);      
 
 		if (rc < 0) {
@@ -203,7 +218,22 @@ int main(int argc, char **argv, char **envp)
 			lseek(fdset[1].fd, 0, SEEK_SET);  // Read from the start of the file
 			len = read(fdset[1].fd, buf, MAX_BUF);
 			printf("\npoll() GPIO %d interrupt occurred, value=%c, len=%d\n",
-				 gpiofds[cur_gpio], buf[0], len);
+				 gpios[cur_gpio], buf[0], len);
+			switch (cur_gpio) {
+				case 0:
+					mat_try_move(UP);
+					break;
+				case 1:
+					mat_try_move(DOWN);
+					break;
+				case 2:
+					mat_try_move(LEFT);
+					break;
+				case 3:
+					mat_try_move(RIGHT);
+					break;
+			}
+			mat_print();
 		}
 
 		if (fdset[0].revents & POLLIN) {
