@@ -44,8 +44,13 @@ From https://www.ridgerun.com/developer/wiki/index.php/Gpio-int-test.c
  * Constants
  ****************************************************************/
  
-#define POLL_TIMEOUT (3 * 1000) /* 3 seconds */
+#define POLL_TIMEOUT (3) //* 1000) /* 3 seconds */
 #define MAX_BUF 64
+
+#define GPIO_UP 60
+#define GPIO_DOWN 48
+#define GPIO_LEFT 3
+#define GPIO_RIGHT 49
 
 /****************************************************************
  * Global variables
@@ -63,6 +68,66 @@ void signal_handler(int sig)
 	keepgoing = 0;
 }
 
+
+/****************************************************************
+ * Etchasketch code
+ ****************************************************************/
+
+#define ROWS 8
+#define COLS 8
+
+int* matrix;
+int pos_x = 0;
+int pos_y = 0;
+
+typedef enum {UP, DOWN, LEFT, RIGHT} Direction;
+
+void mat_alloc(){
+	matrix = (int*) calloc(ROWS*HEIGHT, sizeof(int));
+}
+
+void mat_free(){
+	free(matrix);
+}
+
+void mat_do_move(int newx, int newy) {
+	matrix[newx + newy * COLS] = 1;
+	pos_x = newx;
+	pos_y = newy;	
+}
+
+void mat_try_move(Direction dir){
+	int dx = 0;
+	int dy = 0;
+	switch(dir){
+		case UP:
+			dy = -1;
+			break;
+		case DOWN:
+			dy = 1;
+			break;
+		case LEFT:
+			dx = -1;
+			break;
+		case RIGHT:
+			dx = 1;				
+			break;
+	}
+	int newx = pos_x + dx;
+	int newy = pos_y + dy;
+	if (newx >= 0 && newx <	COLS &&
+		newy >= 0 && newy < ROWS) {
+		mat_do_move(newx, newy);
+	}
+}
+
+void mat_reset() {
+	int x, y;
+	for (x = 0; x < COLS; x++)
+		for (y = 0; y < ROWS; y++)
+			matrix[x + y * COLS] = 0;
+}
+
 /****************************************************************
  * Main
  ****************************************************************/
@@ -70,54 +135,75 @@ int main(int argc, char **argv, char **envp)
 {
 	struct pollfd fdset[2];
 	int nfds = 2;
-	int gpio_fd, timeout, rc;
+	int timeout, rc;
+	int gpio_fd_up, gpio_fd_down, gpio_fd_left, gpio_fd_right;
 	char buf[MAX_BUF];
-	unsigned int gpio;
+	unsigned int gpio_up = GPIO_UP;
+	unsigned int gpio_down = GPIO_DOWN;
+	unsigned int gpio_left = GPIO_LEFT;
+	unsigned int gpio_right = GPIO_RIGHT;
 	int len;
 
+/*
 	if (argc < 2) {
 		printf("Usage: gpio-int <gpio-pin>\n\n");
 		printf("Waits for a change in the GPIO pin voltage level or input on stdin\n");
 		exit(-1);
 	}
+*/
 
 	// Set the signal callback for Ctrl-C
 	signal(SIGINT, signal_handler);
 
-	gpio = atoi(argv[1]);
+	mat_alloc();
 
-	gpio_export(gpio);
-	gpio_set_dir(gpio, "in");
-	gpio_set_edge(gpio, "both");  // Can be rising, falling or both
-	gpio_fd = gpio_fd_open(gpio, O_RDONLY);
+
+	gpio_export(gpio_up);
+	gpio_set_dir(gpio_up, "in");
+	gpio_set_edge(gpio_up, "rising");  // Can be rising, falling or both
+	gpio_fd_up = gpio_fd_open(gpio_up, O_RDONLY);
+
+	gpio_export(gpio_down);
+	gpio_set_dir(gpio_down, "in");
+	gpio_set_edge(gpio_down, "rising");  // Can be rising, falling or both
+	gpio_fd_down = gpio_fd_open(gpio_down, O_RDONLY);
+
+	gpio_export(gpio_left);
+	gpio_set_dir(gpio_left, "in");
+	gpio_set_edge(gpio_left, "falling");  // Can be rising, falling or both
+	gpio_fd_left = gpio_fd_open(gpio_left, O_RDONLY);
+
+	gpio_export(gpio_right);
+	gpio_set_dir(gpio_right, "in");
+	gpio_set_edge(gpio_right, "rising");  // Can be rising, falling or both
+	gpio_fd_right = gpio_fd_open(gpio_right, O_RDONLY);
 
 	timeout = POLL_TIMEOUT;
+	
+	unsigned int gpios[] = {GPIO_UP,GPIO_DOWN,GPIO_LEFT,GPIO_RIGHT};
+	int cur_gpio = 0;
  
 	while (keepgoing) {
 		memset((void*)fdset, 0, sizeof(fdset));
 
 		fdset[0].fd = STDIN_FILENO;
 		fdset[0].events = POLLIN;
-      
-		fdset[1].fd = gpio_fd;
 		fdset[1].events = POLLPRI;
 
+
+		fdset[1].fd = gpios[cur_gpio];
 		rc = poll(fdset, nfds, timeout);      
 
 		if (rc < 0) {
 			printf("\npoll() failed!\n");
 			return -1;
 		}
-      
-		if (rc == 0) {
-			printf(".");
-		}
             
 		if (fdset[1].revents & POLLPRI) {
 			lseek(fdset[1].fd, 0, SEEK_SET);  // Read from the start of the file
 			len = read(fdset[1].fd, buf, MAX_BUF);
 			printf("\npoll() GPIO %d interrupt occurred, value=%c, len=%d\n",
-				 gpio, buf[0], len);
+				 gpios[cur_gpio], buf[0], len);
 		}
 
 		if (fdset[0].revents & POLLIN) {
@@ -125,10 +211,15 @@ int main(int argc, char **argv, char **envp)
 			printf("\npoll() stdin read 0x%2.2X\n", (unsigned int) buf[0]);
 		}
 
+		cur_gpio = (cur_gpio + 1) % 4;
 		fflush(stdout);
 	}
 
-	gpio_fd_close(gpio_fd);
+	mat_free();
+	gpio_fd_close(gpio_fd_up);
+	gpio_fd_close(gpio_fd_down);
+	gpio_fd_close(gpio_fd_left);
+	gpio_fd_close(gpio_fd_right);
 	return 0;
 }
 
