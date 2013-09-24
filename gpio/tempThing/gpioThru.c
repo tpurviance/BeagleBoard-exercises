@@ -1,0 +1,190 @@
+/* Copyright (c) 2011, RidgeRun
+ * All rights reserved.
+ *
+From https://www.ridgerun.com/developer/wiki/index.php/Gpio-int-test.c
+
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *    This product includes software developed by the RidgeRun.
+ * 4. Neither the name of the RidgeRun nor the
+ *    names of its contributors may be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY RIDGERUN ''AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL RIDGERUN BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <signal.h>	// Defines signal-handling functions (i.e. trap Ctrl-C)
+#include "gpio-utils.h"
+
+ /****************************************************************
+ * Constants
+ ****************************************************************/
+ 
+#define POLL_TIMEOUT (3) //* 1000) /* 3 seconds */
+#define MAX_BUF 64
+
+#define GPIO_BUTTONS 60
+#define GPIO_SCREEN 48
+
+/****************************************************************
+ * Global variables
+ ****************************************************************/
+int keepgoing = 1;	// Set to 0 when ctrl-c is pressed
+
+/****************************************************************
+ * signal_handler
+ ****************************************************************/
+void signal_handler(int sig);
+// Callback called when SIGINT is sent to the process (Ctrl-C)
+void signal_handler(int sig)
+{
+	printf( "Ctrl-C pressed, cleaning up and exiting..\n" );
+	keepgoing = 0;
+}
+
+
+
+void mat_try_move(Direction dir){
+	printf("something happened!\n");
+	switch(dir){
+		case UP:
+			dy = -1; /// HERE!!!!!!!!!!!!!!!!!!!!!!
+			break;
+		case DOWN:
+			dy = 1;
+			break;
+		case LEFT:
+			dx = -1;
+			break;
+		case RIGHT:
+			dx = 1;				
+			break;
+	}
+	int newx = pos_x + dx;
+	int newy = pos_y + dy;
+	if (newx >= 0 && newx <	COLS &&
+		newy >= 0 && newy < ROWS) {
+		mat_do_move(newx, newy);
+	}
+}
+
+/****************************************************************
+ * Main
+ ****************************************************************/
+int main(int argc, char **argv, char **envp)
+{
+	struct pollfd fdset[2];
+	int nfds = 2;
+	int timeout, rc;
+	int gpio_fd_buttons, gpio_fd_screen;
+	char buf[MAX_BUF];
+	unsigned int gpio_buttons = GPIO_BUTTONS;
+	unsigned int gpio_screen = GPIO_SCREEN;
+	int len;
+
+/*
+	if (argc < 2) {
+		printf("Usage: gpio-int <gpio-pin>\n\n");
+		printf("Waits for a change in the GPIO pin voltage level or input on stdin\n");
+		exit(-1);
+	}
+*/
+
+	// Set the signal callback for Ctrl-C
+	signal(SIGINT, signal_handler);
+
+	system("./setup.sh");
+
+
+	gpio_export(gpio_buttons);
+	gpio_set_dir(gpio_buttons, "in");
+	gpio_set_edge(gpio_buttons, "both");  // Can be rising, falling or both
+	gpio_fd_buttons = gpio_fd_open(gpio_buttons, O_RDONLY);
+
+	gpio_export(gpio_screen);
+	gpio_set_dir(gpio_screen, "in");
+	gpio_set_edge(gpio_screen, "both");  // Can be rising, falling or both
+	gpio_fd_screen = gpio_fd_open(gpio_screen, O_RDONLY);
+
+
+	timeout = POLL_TIMEOUT;
+	
+	unsigned int gpios[] = {GPIO_BUTTONS,GPIO_SCREEN};
+	unsigned int gpiofds[] = {gpio_fd_buttons, gpio_fd_screen};
+
+	int cur_gpio = 0;
+ 
+	while (keepgoing) {
+		memset((void*)fdset, 0, sizeof(fdset));
+
+		fdset[0].fd = STDIN_FILENO;
+		fdset[0].events = POLLIN;
+		fdset[1].events = POLLPRI;
+
+
+		fdset[1].fd = gpiofds[cur_gpio];
+		rc = poll(fdset, nfds, timeout);      
+
+		if (rc < 0) {
+			printf("\npoll() failed!\n");
+			return -1;
+		}
+            
+		if (fdset[1].revents & POLLPRI) {
+			lseek(fdset[1].fd, 0, SEEK_SET);  // Read from the start of the file
+			len = read(fdset[1].fd, buf, MAX_BUF);
+			printf("\npoll() GPIO %d interrupt occurred, value=%c, len=%d\n",
+				 gpios[cur_gpio], buf[0], len);
+			switch (cur_gpio) {
+				case 0:
+					mat_try_move(UP);
+					break;
+				case 1:
+					mat_try_move(DOWN);
+					break;
+
+			}
+			mat_print();
+		}
+
+		if (fdset[0].revents & POLLIN) {
+			(void)read(fdset[0].fd, buf, 1);
+			printf("\npoll() stdin read 0x%2.2X\n", (unsigned int) buf[0]);
+		}
+
+		cur_gpio = (cur_gpio + 1) % 2;
+		fflush(stdout);
+	}
+
+	mat_free();
+	gpio_fd_close(gpio_fd_up);
+	gpio_fd_close(gpio_fd_down);
+	gpio_fd_close(gpio_fd_left);
+	gpio_fd_close(gpio_fd_right);
+	return 0;
+}
+
