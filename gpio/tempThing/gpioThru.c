@@ -66,29 +66,73 @@ void signal_handler(int sig)
 	keepgoing = 0;
 }
 
+void grabTemp(int addr){
+	char *end;
+	int res, i2cbus, address, size, file;
+	int daddress;
+	char filename[20];
+
+	i2cbus   = 1;
+	address  = addr;
+	daddress = 0;
+	size = I2C_SMBUS_BYTE;
+
+	sprintf(filename, "/dev/i2c-%d", i2cbus);
+	file = open(filename, O_RDWR);
+	if (file<0) {
+		if (errno == ENOENT) {
+			fprintf(stderr, "Error: Could not open file "
+				"/dev/i2c-%d: %s\n", i2cbus, strerror(ENOENT));
+		} else {
+			fprintf(stderr, "Error: Could not open file "
+				"`%s': %s\n", filename, strerror(errno));
+			if (errno == EACCES)
+				fprintf(stderr, "Run as root?\n");
+		}
+		exit(1);
+	}
+
+	if (ioctl(file, I2C_SLAVE, address) < 0) {
+		fprintf(stderr,
+			"Error: Could not set address to 0x%02x: %s\n",
+			address, strerror(errno));
+		return -errno;
+	}
+
+/*
+	res = i2c_smbus_write_byte(file, daddress);
+	if (res < 0) {
+		fprintf(stderr, "Warning - write failed, filename=%s, daddress=%d\n",
+			filename, daddress);
+	}
+*/
+
+	res = i2c_smbus_read_byte_data(file, daddress);
+	close(file);
+
+	if (res < 0) {
+		fprintf(stderr, "Error: Read failed, res=%d\n", res);
+		exit(2);
+	}
+
+	printf("reached %f degrees farenheit\n", res * 1.8 + 32.0);
+}
+
 
 
 void mat_try_move(Direction dir){
 	printf("something happened!\n");
 	switch(dir){
 		case UP:
-			dy = -1; /// HERE!!!!!!!!!!!!!!!!!!!!!!
+			grabTemp(0x49);
 			break;
 		case DOWN:
-			dy = 1;
+			grabTemp(0x4a);
 			break;
 		case LEFT:
-			dx = -1;
 			break;
-		case RIGHT:
-			dx = 1;				
+		case RIGHT:			
 			break;
-	}
-	int newx = pos_x + dx;
-	int newy = pos_y + dy;
-	if (newx >= 0 && newx <	COLS &&
-		newy >= 0 && newy < ROWS) {
-		mat_do_move(newx, newy);
 	}
 }
 
