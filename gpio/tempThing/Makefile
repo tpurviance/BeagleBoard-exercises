@@ -8,6 +8,8 @@ all:	gpioThru
 
 gpioThru:	gpioThru.o gpio-utils.o
 	$(CC) $(LDFLAGS) -o $@ $^
+	chmod +x ./setup.sh
+	./setup.sh
 
 
 #
