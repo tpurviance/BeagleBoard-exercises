@@ -136,7 +136,58 @@ static int write_block(int file, __u16 *data) {
 #endif
 }
 
+int grabTemp(int addr, int daddr, int isTest){
+	char *end;
+	int res, i2cbus, address, size, file;
+	int daddress;
+	char filename[20];
 
+	i2cbus   = 1;
+	address  = addr;
+	daddress = daddr;
+	size = I2C_SMBUS_BYTE;
+
+	sprintf(filename, "/dev/i2c-%d", i2cbus);
+	file = open(filename, O_RDWR);
+	if (file<0) {
+		if (errno == ENOENT) {
+			fprintf(stderr, "Error: Could not open file "
+				"/dev/i2c-%d: %s\n", i2cbus, strerror(ENOENT));
+		} else {
+			fprintf(stderr, "Error: Could not open file "
+				"`%s': %s\n", filename, strerror(errno));
+			if (errno == EACCES)
+				fprintf(stderr, "Run as root?\n");
+		}
+		exit(1);
+	}
+
+	if (ioctl(file, I2C_SLAVE, address) < 0) {
+		fprintf(stderr,
+			"Error: Could not set address to 0x%02x: %s\n",
+			address, strerror(errno));
+		return -errno;
+	}
+
+/*
+	res = i2c_smbus_write_byte(file, daddress);
+	if (res < 0) {
+		fprintf(stderr, "Warning - write failed, filename=%s, daddress=%d\n",
+			filename, daddress);
+	}
+*/
+
+	res = i2c_smbus_read_byte_data(file, daddress);
+	close(file);
+
+	if (res < 0) {
+		fprintf(stderr, "Error: Read failed, res=%d\n", res);
+		//exit(2);
+	}
+	if (isTest)
+		printf("reached %f degrees farenheit (0x%2.2X) on pin 0x%2.2X\n", res * 1.8 + 32.0, res, addr);
+	return res;
+}
 
 /****************************************************************
  * Etchasketch code
@@ -200,7 +251,8 @@ void mat_reset() {
 }
 
 void mat_print(){
-	int i,x,y;
+	int i,x,y,temp;
+	temp = grabTemp
 	for (x = -1; x <= COLS; x++){
 		for (y = -1; y <= ROWS; y++){
 			if (x < 0 || x == COLS)
@@ -219,7 +271,9 @@ static __u16 screen[8]= {0,0,0,0,0,0,0,0};
 void mat_disp_gen(){
 	// The upper btye is RED, the lower is GREEN.
 	// The single color display responds only to the lower byte
-	int x, y;
+	int x, y, temp;
+
+	temp = grabTemp(0x49, 0, 1);
 	for (y = 0; y < ROWS; y++)
 		screen[y] = 0;
 		

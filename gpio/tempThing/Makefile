@@ -4,19 +4,11 @@ TOOLS_CFLAGS	:= -Wstrict-prototypes -Wshadow -Wpointer-arith -Wcast-qual \
 #
 # Programs
 #
-all:	gpio-int-test togglegpio gpioThru ncurses
-
-gpio-int-test:  gpio-int-test.o gpio-utils.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-togglegpio:	togglegpio.o gpio-utils.o
-	$(CC) $(LDFLAGS) -o $@ $^
+all:	gpioThru
 
 gpioThru:	gpioThru.o gpio-utils.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
-ncurses:	ncurses.c
-	gcc ncurses.c -lncurses -o ncurses
 
 #
 # Objects
@@ -26,4 +18,4 @@ ncurses:	ncurses.c
 	$(CC) $(CFLAGS) $(TOOLS_CFLAGS) -c $< -o $@
 
 clean:
-	rm gpio-int-test.o gpio-utils.o togglegpio gpioThru ncurses
+	rm gpioThru *.o

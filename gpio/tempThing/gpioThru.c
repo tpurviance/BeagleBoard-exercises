@@ -39,16 +39,17 @@ From https://www.ridgerun.com/developer/wiki/index.php/Gpio-int-test.c
 #include <poll.h>
 #include <signal.h>	// Defines signal-handling functions (i.e. trap Ctrl-C)
 #include "gpio-utils.h"
+#include "i2c-dev.h"
 
  /****************************************************************
  * Constants
  ****************************************************************/
  
-#define POLL_TIMEOUT (3) //* 1000) /* 3 seconds */
+#define POLL_TIMEOUT (1000) //* 1000) /* 3 seconds */
 #define MAX_BUF 64
 
-#define GPIO_BUTTONS 60
-#define GPIO_SCREEN 48
+#define GPIO_BUTTONS 47
+#define GPIO_SCREEN 44
 
 /****************************************************************
  * Global variables
@@ -66,7 +67,9 @@ void signal_handler(int sig)
 	keepgoing = 0;
 }
 
-void grabTemp(int addr){
+typedef enum {UP, DOWN, LEFT, RIGHT} Direction;
+
+void grabTemp(int addr, int daddr, int isTest){
 	char *end;
 	int res, i2cbus, address, size, file;
 	int daddress;
@@ -74,7 +77,7 @@ void grabTemp(int addr){
 
 	i2cbus   = 1;
 	address  = addr;
-	daddress = 0;
+	daddress = daddr;
 	size = I2C_SMBUS_BYTE;
 
 	sprintf(filename, "/dev/i2c-%d", i2cbus);
@@ -112,10 +115,12 @@ void grabTemp(int addr){
 
 	if (res < 0) {
 		fprintf(stderr, "Error: Read failed, res=%d\n", res);
-		exit(2);
+		//exit(2);
 	}
-
-	printf("reached %f degrees farenheit\n", res * 1.8 + 32.0);
+	if (!isTest)
+		printf("reached %f degrees farenheit (0x%2.2X)\n", res * 1.8 + 32.0, res);
+	else
+		printf("reached %f degrees farenheit (0x%2.2X) on pin 0x%2.2X\n", res * 1.8 + 32.0, res, addr);
 }
 
 
@@ -124,10 +129,10 @@ void mat_try_move(Direction dir){
 	printf("something happened!\n");
 	switch(dir){
 		case UP:
-			grabTemp(0x49);
+			grabTemp(0x49,0,0);
 			break;
 		case DOWN:
-			grabTemp(0x4a);
+			grabTemp(0x4a,0,0);
 			break;
 		case LEFT:
 			break;
@@ -212,23 +217,16 @@ int main(int argc, char **argv, char **envp)
 					break;
 
 			}
-			mat_print();
 		}
+		
 
-		if (fdset[0].revents & POLLIN) {
-			(void)read(fdset[0].fd, buf, 1);
-			printf("\npoll() stdin read 0x%2.2X\n", (unsigned int) buf[0]);
-		}
-
+		grabTemp(0x49+cur_gpio,0,1);
 		cur_gpio = (cur_gpio + 1) % 2;
 		fflush(stdout);
 	}
 
-	mat_free();
-	gpio_fd_close(gpio_fd_up);
-	gpio_fd_close(gpio_fd_down);
-	gpio_fd_close(gpio_fd_left);
-	gpio_fd_close(gpio_fd_right);
+	gpio_fd_close(gpio_fd_buttons);
+	gpio_fd_close(gpio_fd_screen);
 	return 0;
 }
 
