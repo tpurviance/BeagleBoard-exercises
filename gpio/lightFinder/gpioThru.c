@@ -60,6 +60,7 @@ int keepgoing = 1;	// Set to 0 when ctrl-c is pressed
  * signal_handler
  ****************************************************************/
 void signal_handler(int sig);
+int get_analog(int ain);
 // Callback called when SIGINT is sent to the process (Ctrl-C)
 void signal_handler(int sig)
 {
@@ -82,6 +83,7 @@ int main(int argc, char **argv, char **envp)
 	unsigned int gpio_motor_a = GPIO_MOTOR_A;
 	unsigned int gpio_motor_b = GPIO_MOTOR_B;
 	int len;
+	system("./setup_analog.sh");
 
 /*
 	if (argc < 2) {
@@ -157,6 +159,10 @@ int main(int argc, char **argv, char **envp)
 		usleep(50000);
 		cur_gpio = (cur_gpio + 1) % 2;
 		fflush(stdout);
+		int value0 = get_analog(0);
+		int value1 = get_analog(1);
+		printf("%i\t%i\n", value0, value1);
+		
 	}
 
 	gpio_fd_close(gpio_fd_motor_a);
@@ -164,3 +170,20 @@ int main(int argc, char **argv, char **envp)
 	return 0;
 }
 
+int get_analog(int ain){
+	char buff[100];
+	if (ain > 7 | ain < 0){
+		return -1;
+	}
+	sprintf(buff, "/sys/devices/ocp.2/helper.14/AIN%d", ain);
+	FILE * ain_file;
+	ain_file = fopen(buff, "r");
+	if (ain_file == NULL){
+		return -1;
+	}
+	int ain_value;
+	fscanf(ain_file, "%i", &ain_value);
+	fclose(ain_file);
+	return ain_value;
+
+}
