@@ -48,7 +48,7 @@ From https://www.ridgerun.com/developer/wiki/index.php/Gpio-int-test.c
  * Constants
  ****************************************************************/
  
-#define POLL_TIMEOUT (3) //* 1000) /* 3 seconds */
+#define POLL_TIMEOUT (30) //* 1000) /* 3 seconds */
 #define MAX_BUF 64
 
 #define GPIO_UP 60
@@ -251,8 +251,7 @@ void mat_reset() {
 }
 
 void mat_print(){
-	int i,x,y,temp;
-	temp = grabTemp
+	int i,x,y;
 	for (x = -1; x <= COLS; x++){
 		for (y = -1; y <= ROWS; y++){
 			if (x < 0 || x == COLS)
@@ -273,13 +272,14 @@ void mat_disp_gen(){
 	// The single color display responds only to the lower byte
 	int x, y, temp;
 
-	temp = grabTemp(0x49, 0, 1);
+	temp = grabTemp(0x49, 0, 0);
 	for (y = 0; y < ROWS; y++)
 		screen[y] = 0;
 		
 	for (x = 0; x < COLS; x++){
 		for (y = 0; y < ROWS; y++){
-			screen[y] = screen[y] * 2 + matrix[x+y*COLS];
+			screen[y] = screen[y] * 2 + matrix[x+y*COLS] * 
+					((temp > 0x1d ? 0 : 1) + 256*(temp > 0x1b ? 1 : 0));
 		}
 	}
 }
@@ -428,13 +428,14 @@ int main(int argc, char **argv, char **envp)
 					break;
 			}
 			//mat_print();
-			mat_led_disp();
 		}
 
 		if (fdset[0].revents & POLLIN) {
 			(void)read(fdset[0].fd, buf, 1);
 			printf("\npoll() stdin read 0x%2.2X\n", (unsigned int) buf[0]);
 		}
+
+		mat_led_disp();
 
 		cur_gpio = (cur_gpio + 1) % 4;
 		fflush(stdout);
