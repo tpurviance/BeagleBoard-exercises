@@ -51,6 +51,10 @@ From https://www.ridgerun.com/developer/wiki/index.php/Gpio-int-test.c
 #define GPIO_MOTOR_A 30
 #define GPIO_MOTOR_B 60
 
+#define STEPS_PER_ROTATION 20
+#define IR_SENSOR_LOWER_THRESH 100
+#define IR_SENSOR_UPPER_THRESH 2000
+
 /****************************************************************
  * Global variables
  ****************************************************************/
@@ -67,6 +71,38 @@ void signal_handler(int sig)
 	printf( "Ctrl-C pressed, cleaning up and exiting..\n" );
 	keepgoing = 0;
 }
+
+
+int cur_gpio = 0;
+int motor_a = 0;
+int motor_b = 0;
+int cur_pos = 0;
+
+void rotateClockwise(int steps) {
+	while (steps != 0){
+		if (steps < 0) {
+			if (cur_gpio == 0)
+				motor_a = !motor_a;
+			else
+				motor_b = !motor_b;
+			cur_gpio = (cur_gpio + 1) % 2;
+			steps ++;
+		} else if (steps > 0) {
+			cur_gpio = (cur_gpio + 1) % 2;
+			if (cur_gpio == 0)
+				motor_a = !motor_a;
+			else
+				motor_b = !motor_b;
+			steps--;
+		}
+		gpio_set_value(GPIO_MOTOR_A, motor_a);
+		gpio_set_value(GPIO_MOTOR_B, motor_b);
+		usleep(50000);
+	}
+	
+}
+
+typedef enum {SPIN_SEARCH, TRACK } strategy;
 
 
 /****************************************************************
@@ -111,57 +147,56 @@ int main(int argc, char **argv, char **envp)
 	//unsigned int gpios[] = {GPIO_BUTTONS,GPIO_SCREEN};
 	//unsigned int gpiofds[] = {gpio_fd_buttons, gpio_fd_screen};
 
-	int cur_gpio = 0;
-	int motor_a = 0;
-	int motor_b = 0;
- 
+	
+
+	int pos = 0; 	
+	int value0;
+	int value1;
+	int lights[STEPS_PER_ROTATION];
+	strategy cur_strat = SPIN_SEARCH;
 	while (keepgoing) {
-/**
-		memset((void*)fdset, 0, sizeof(fdset));
-
-		fdset[0].fd = STDIN_FILENO;
-		fdset[0].events = POLLIN;
-		fdset[1].events = POLLPRI;
-
-
-		fdset[1].fd = gpiofds[cur_gpio];
-		rc = poll(fdset, nfds, timeout);      
-
-		if (rc < 0) {
-			printf("\npoll() failed!\n");
-			return -1;
+		switch (cur_strat){
+			case SPIN_SEARCH:
+				value0 = get_analog(0);
+				value1 = get_analog(1);
+				if (value0 > IR_SENSOR_LOWER_THRESH &&
+						value0 < IR_SENSOR_UPPER_THRESH &&
+						value1 > IR_SENSOR_LOWER_THRESH &&
+						value1 < IR_SENSOR_UPPER_THRESH){
+					lights[pos] = (value0 + value1) / 2;
+					pos++;
+					rotateClockwise(1);
+					if (pos == STEPS_PER_ROTATION) {
+						int i = 0;
+						int mini = 0;
+						int minv = lights[0];
+						for (i = 1; i < STEPS_PER_ROTATION; i++){
+							if (lights[i] < minv){
+								minv = lights[i];
+								mini = i;
+							}
+						}
+						
+						rotateClockwise(mini - STEPS_PER_ROTATION);
+						cur_strat = TRACK;
+					}
+				} else 
+					
+				break;
+			case TRACK:
+				value0 = get_analog(0);
+				value1 = get_analog(1);
+				if (value0 < value1)
+					rotateClockwise(1);
+				else 
+					rotateClockwise(-1);
+				break;
+		
 		}
-            
-		if (fdset[1].revents & POLLPRI) {
-			lseek(fdset[1].fd, 0, SEEK_SET);  // Read from the start of the file
-			len = read(fdset[1].fd, buf, MAX_BUF);
-			printf("\npoll() GPIO %d interrupt occurred, value=%c, len=%d\n",
-				 gpios[cur_gpio], buf[0], len);
-			switch (cur_gpio) {
-				case 0:
-					mat_try_move(UP);
-					break;
-				case 1:
-					mat_try_move(DOWN);
-					break;
-
-			}
-		}
-**/		
-		if (cur_gpio == 0)
-			motor_a = !motor_a;
-		else
-			motor_b = !motor_b;
-
-		gpio_set_value(gpio_motor_a, motor_a);
-		gpio_set_value(gpio_motor_b, motor_b);
-
-		usleep(50000);
-		cur_gpio = (cur_gpio + 1) % 2;
-		fflush(stdout);
+		
 		int value0 = get_analog(0);
 		int value1 = get_analog(1);
-		printf("%i\t%i\n", value0, value1);
+		printf("%i\t%i\tstate:%i\n", value0, value1, (int) cur_strat);
 		
 	}
 
