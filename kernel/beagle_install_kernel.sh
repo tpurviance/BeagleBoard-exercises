@@ -64,7 +64,8 @@ mmc_write_rootfs () {
 				fi
 
 				mv "${location}/boot/uImage" "${location}/boot/uImage_bak"
-				cp ${DIR}/deploy/uImage-${KERNEL_UTS} /boot
+    			cp ${DIR}/deploy/uImage-${KERNEL_UTS} /boot
+    			cp ${DIR}/deploy/${KERNEL_UTS}.config /boot
 				cd /boot
 				ln -s uImage-${KERNEL_UTS} uImage
 			fi
@@ -80,7 +81,7 @@ if [ -f "${DIR}/system.sh" ] ; then
 # This will make the root filesystem appear at linux-dev/deploy/disk
 #	if [ ! -e ${DIR}/deploy/disk ]; then
 #        mkdir -p ${DIR}/deploy
-        rm ${DIR}/deploy/disk || true
+        rm -rf ${DIR}/deploy/disk || true
 		ln -s / ${DIR}/deploy/disk
 #	fi
 	location="${DIR}/deploy/disk"

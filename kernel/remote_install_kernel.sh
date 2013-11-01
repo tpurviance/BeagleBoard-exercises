@@ -11,7 +11,11 @@
 # The files will be copied to the correct places.  Reboot and enjoy.
 
 BeagleAddr=192.168.7.2
+# BeagleAddr=138.112.41.141
+# BeagleAddr=yoder-dell.dhcp.rose-hulman.edu
 DIR=$PWD
+USER=root
+# USER=yoder
 
 if [ -f "${DIR}/system.sh" ] ; then
 	. ${DIR}/system.sh
@@ -27,8 +31,8 @@ else
 	exit 1
 fi
 
-ssh root@$BeagleAddr mkdir -p linux-dev/KERNEL/include/generated linux-dev/tools
-scp ${DIR}/KERNEL/include/generated/utsrelease.h root@$BeagleAddr:linux-dev/KERNEL/include/generated/utsrelease.h
-scp tools/beagle_install_kernel.sh root@$BeagleAddr:linux-dev/tools
-scp -r version.sh system.sh deploy root@$BeagleAddr:linux-dev
+ssh $USER@$BeagleAddr mkdir -p linux-dev/KERNEL/include/generated linux-dev/tools
+scp ${DIR}/KERNEL/include/generated/utsrelease.h $USER@$BeagleAddr:linux-dev/KERNEL/include/generated/utsrelease.h
+scp tools/beagle_install_kernel.sh $USER@$BeagleAddr:linux-dev/tools
+scp -r version.sh system.sh deploy $USER@$BeagleAddr:linux-dev
 
