@@ -20,22 +20,22 @@ $('#matrixLED').append(matrixData);
 function LEDclick(i, j) {
 //	alert(i+","+j+" clicked");
 	//get the current greenness/redness
-	var cg = disp[i]&(0x1<<j);
-	var cr = disp[i]&((0x1<<8)<<j);
-	var ngr = (((cr << 1) | cg) + 1)
-	var ng = (ngr & 1) << j;
-	var nr = (ngr >> 1) <<8 << j;
+	var cg = (disp[i] >> j) & 0x1;
+	var cr = (disp[i] >> 8 >> j) & 0x1
+	var ngr = (((cr << 1) | cg) + 1) % 4
+	var ng = (ngr & 0x1) << j;
+	var nr = (ngr & 0x2) << 7 << j;
     disp[i] = ng | nr;
     socket.emit('i2cset', {i2cNum: i2cNum, i: 2*i, 
 			     disp: '0x'+disp[i].toString(16)});
 //	socket.emit('i2c', i2cNum);
     // Toggle bit on display
-    if(nr === 1) {
+    if(nr > 0) {
         $('#id'+i+'_'+j).addClass('Ron');
     } else {
         $('#id'+i+'_'+j).removeClass('Ron');
     }
-	if(ng === 1) {
+	if(ng > 0) {
         $('#id'+i+'_'+j).addClass('on');
     } else {
         $('#id'+i+'_'+j).removeClass('on');
