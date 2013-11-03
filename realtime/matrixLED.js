@@ -20,13 +20,14 @@ $('#matrixLED').append(matrixData);
 function LEDclick(i, j) {
 //	alert(i+","+j+" clicked");
 	//get the current greenness/redness
-	var cg = (disp[i] >>> j) & 0x1;
-	var cr = (disp[i] >>> 8 >>> j) & 0x1;
+	var cg = (disp[i] >>> j) & 1;
+	var cr = (disp[i] >>> 8 >>> j) & 1;
 	var ngr = (((cr << 1) + cg) + 1) % 4;
-	var ng = (ngr & 0x1) << j;
-	var nr = (ngr & 0x2) << 7 << j;
+	var ng = (ngr & 1) << j;
+	var nr = (ngr & 2) << 7 << j;
 	console.log([cg,cr,ng,nr]);
-    disp[i] = ng | nr;
+    disp[i]  = disp[i] & (0xffff ^ ((1<<j) | (1<<8<<j)))
+	disp[i] |= ng | nr;
     socket.emit('i2cset', {i2cNum: i2cNum, i: 2*i, 
 			     disp: '0x'+disp[i].toString(16)});
 //	socket.emit('i2c', i2cNum);
