@@ -21,9 +21,15 @@ body {
 	font-family: Courier;
 	border: 1px solid #eeeeee;
 	background-color: #eeeeee;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 }
 
-.Ron .on {
+.Ron.on {
 	border: 1px solid #00ee00;
 	background-color: orange;
 }
