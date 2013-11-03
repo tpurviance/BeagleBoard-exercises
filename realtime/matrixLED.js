@@ -100,7 +100,7 @@ function LEDclick(i, j) {
         // Ignore the red.
         // Convert from hex.
         for (i = 0; i < data.length; i += 2) {
-            disp[i / 2] = parseInt(data[i], 16);
+            disp[i / 2] = parseInt(data[i], 16) | (parseInt(data[i+1], 16)<<8);
         }
         //        status_update("disp: " + disp);
         // i cycles through each column
@@ -111,6 +111,11 @@ function LEDclick(i, j) {
                     $('#id' + i + '_' + j).addClass('on');
                 } else {
                     $('#id' + i + '_' + j).removeClass('on');
+                }
+				if (((disp[i] >> 8 >> j) & 0x1) === 1) {
+                    $('#id' + i + '_' + j).addClass('Ron');
+                } else {
+                    $('#id' + i + '_' + j).removeClass('Ron');
                 }
             }
         }
