@@ -23,10 +23,19 @@ body {
 	background-color: #eeeeee;
 }
 
+.Ron .on {
+	border: 1px solid #00ee00;
+	background-color: orange;
+}
+
 .on {
 	border: 1px solid #00ee00;
 	background-color: green;
+}
 
+.Ron {
+	border: 1px solid #00ee00;
+	background-color: red;
 }
 
 #i2cNum {

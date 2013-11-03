@@ -19,12 +19,23 @@ $('#matrixLED').append(matrixData);
 // Send one column when LED is clicked.
 function LEDclick(i, j) {
 //	alert(i+","+j+" clicked");
-    disp[i] ^= 0x1<<j;
+	//get the current greenness/redness
+	var cg = disp[i]&(0x1<<j);
+	var cr = disp[i]&((0x1<<8)<<j);
+	var ngr = (((cr << 1) | cg) + 1)
+	var ng = (ngr & 1) << j;
+	var nr = (ngr >> 1) <<8 << j;
+    disp[i] = ng | nr;
     socket.emit('i2cset', {i2cNum: i2cNum, i: 2*i, 
 			     disp: '0x'+disp[i].toString(16)});
 //	socket.emit('i2c', i2cNum);
     // Toggle bit on display
-    if(disp[i]>>j&0x1 === 1) {
+    if(nr === 1) {
+        $('#id'+i+'_'+j).addClass('Ron');
+    } else {
+        $('#id'+i+'_'+j).removeClass('Ron');
+    }
+	if(ng === 1) {
         $('#id'+i+'_'+j).addClass('on');
     } else {
         $('#id'+i+'_'+j).removeClass('on');
